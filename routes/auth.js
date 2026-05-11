@@ -29,11 +29,15 @@ function auth(req, res, next){
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         //när ovan är ok, spara användardata i req.user
         req.user = decoded;
+        /*hade dessa nedan för debugging:
+
         console.log("Auth header", req.headers.authorization);
-        console.log("Token: ", token);
+        console.log("Token: ", token);*/
+
         //next() => första delen i kedjan är ok, så gå vidare till nästa steg i kedjan (se route.get("/profile"))
         next();
-    }catch{
+    }catch (err){
+        console.error(err);
         return res.status(401).json({ error: "Ogiltig token" });
     }
 }
@@ -68,7 +72,8 @@ router.post("/register", async (req, res) => {
         });
         res.status(201).json({ message: "Användare skapad"});
     }catch (err){
-        res.status(400).json({ error: "Kunde inte skapa användare" });
+        console.error(err);
+        return res.status(500).json({ error: "Serverfel! Kunde inte skapa användare" });
     }
 })
 
@@ -89,14 +94,14 @@ router.post("/login", async (req, res) => {
 
         //om ingen användare finns, visa fel
         if(!user){
-            return res.status(400).json({ error: "Användare hittades inte" });
+            return res.status(401).json({ error: "Användare hittades inte" });
         }
 
         //kontroll ifall lösenordet stämmer överens. compare kommer från bcryptjs
         const isMatched = await bcrypt.compare(password, user.password);
 
         if(!isMatched){
-            return res.status(400).json({ error: "Fel lösenord" });
+            return res.status(401).json({ error: "Fel lösenord" });
         }
         //skapa en token som innehåller användarens info. Giltig i 1h
         //data packas in - kallas tydligen payload? (id, username)
@@ -116,7 +121,8 @@ router.post("/login", async (req, res) => {
         );
         res.json({ message: "Lyckat login", token });
     }catch(err){
-        res.status(500).json({ error: "Server error" });
+        console.error(err);
+        res.status(500).json({ error: "Internt serverfel" });
     }
 })
 
@@ -126,7 +132,6 @@ router.post("/login", async (req, res) => {
 // -hämtar användardata 
 // -sparar användaren i req.user
 //next() ser till att denna route går igång
-
 router.get("/profile", auth, async (req, res) => {
     try{
         //hämta användare via id. 
@@ -139,7 +144,8 @@ router.get("/profile", auth, async (req, res) => {
         }
         res.json({ message: "Detta är skyddad data", user });
     }catch(err){
-        res.status(500).json({ error: "Server error" });
+        console.error(err);
+        res.status(500).json({ error: "Internt serverfel" });
     }
 })
 
@@ -150,9 +156,10 @@ router.delete("/user", auth, async (req, res) => {
         if(!user){
             return res.status(404).json({ error: "Användare hittades inte" });
         }
-        res.json({ message: "User deleted successfully!" });
+        res.json({ message: "Användare raderad!" });
     }catch(err){
-        res.status(500).json({ error: "Server error" });
+        console.error(err);
+        res.status(500).json({ error: "Internt serverfel" });
     }
 })
 

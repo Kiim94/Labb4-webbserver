@@ -10,7 +10,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 //middleware
-app.use(cors());
+//tillåt localhost:5173 för vite-frontend, och webbserver länken för publicerad frontend
+app.use(cors({
+    //origin: "vilka webbplatser får anropa mitt api"
+    origin:[
+        "http://localhost:5173",
+        "https://laboration4.netlify.app"
+    ]
+}));
+
 app.use(express.json());
 
 //hämta routes från auth.js
@@ -19,18 +27,21 @@ const authRoutes = require("./routes/auth");
 app.use("/api/auth", authRoutes);
 
 //anslut till MongoDB
-mongoose.connect(MONGO_URI)
-    .then(() => {
-        console.log("MongoDB connected");
-        //nedan för att kunna se vad databasen heter, ska ta bort senare
-        console.log("DB NAME:", mongoose.connection.name);
-    })
-    .catch(err => console.log(err)); 
+async function startServer(){
+    try{
+        if(!MONGO_URI){
+            console.error("MONGO_URI saknas i .env");
+            process.exit(1)
+        }
+        await mongoose.connect(MONGO_URI);
+        console.log("Uppkopplad till MongoDB");
+        app.listen(PORT, () => {
+            console.log("API fungerar på port: " + PORT);
+        });
+    }catch(err){
+        console.error("Kunde inte ansluta till MongoDB:", err);
+        process.exit(1);
+    }
+}
 
-app.get("/", (req, res) => {
-    res.send("API server fungerar!");
-})
-
-app.listen(PORT, () => {
-    console.log("Server fungerar på port " + PORT);
-})
+startServer();
